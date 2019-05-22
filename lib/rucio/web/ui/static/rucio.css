@@ -129,3 +129,12 @@ a.info {
 .valign-middle [class*="column"] + [class*="column"]:last-child {
   float: none;
 }
+
+.center{
+  left: 25%;
+}
+
+#login_form table {
+  width: 50%;
+  margin: 0 auto;
+}

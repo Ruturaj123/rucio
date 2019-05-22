@@ -32,11 +32,11 @@ from tarfile import open, TarError
 
 from gzip import GzipFile
 from requests import get, ConnectionError
-from web import application, header, input as param_input, seeother, template
+from web import application, header, input as param_input, seeother, template, form
 
 from rucio.common.config import config_get
 from rucio.common.utils import generate_http_error
-from rucio.web.ui.common.utils import check_token, get_token
+from rucio.web.ui.common.utils import check_token, get_token, validate_credentials
 
 
 COMMON_URLS = (
@@ -71,7 +71,9 @@ COMMON_URLS = (
     '/subscriptions', 'Subscriptions',
     '/subscriptions_editor', 'SubscriptionsEditor',
     '/logfiles/load', 'LoadLogfile',
-    '/logfiles/extract', 'ExtractLogfile'
+    '/logfiles/extract', 'ExtractLogfile',
+    '/login', 'Login',
+    '/validate', 'ValidateCredentials'
 )
 
 POLICY = config_get('policy', 'permission')
@@ -295,6 +297,11 @@ class ListRulesRedirect(object):
             url += key + '=' + value + '&'
         seeother(url[:-1])
 
+class Login(object):
+
+    def GET(self):
+        render = template.render(join(dirname(__file__), 'templates/'))
+        return render.login()
 
 class Rule(object):
     """ Rule details page """
@@ -422,6 +429,10 @@ class SubscriptionsEditor():
         render = template.render(join(dirname(__file__), 'templates/'))
         return check_token(render.subscriptions_editor())
 
+class ValidateCredentials():
+    def POST(self):
+        data = param_input()
+        return validate_credentials(data)
 
 class LoadLogfile():
     """ Loads logfile content list """
