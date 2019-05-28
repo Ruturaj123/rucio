@@ -41,7 +41,6 @@
   <script src="/static/chosen.jquery.min.js"></script>
   <script src="/static/rucio.js?version=c4c9966296a7478d8156131d9733e002"></script>
   <script src="/static/base.js?version=c25299da061163ff63c5927f87290e9a"></script>
-  <script src="/static/login.js"></script>
   <script src="/static/version.js"></script>
   <script>
     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
@@ -52,7 +51,7 @@
     ga('require', 'linkid', 'linkid.js');
     ga('send', 'pageview');
   </script>
-  <script src="/static/list_rules.js"></script>
+  <script src="/static/login.js"></script>
 </head>
 
 <body>
@@ -66,41 +65,41 @@
   </nav>
 
   <div id="content" style="margin: 1em;">
-        <div id="results" class="row">
+    <div id="results" class="row">
 
-    <div id="t_data" class="columns panel">
-      <div class="row">
-        <div class="large-11 columns">
-          <h3>Login to Rucio</h3>
+      <div id="t_data" class="columns panel">
+        <div class="row">
+          <div class="large-11 columns">
+            <h3>Login to Rucio</h3>
+          </div>
         </div>
+        <form id="login_form" method="POST" action="/ui/login">
+          <div class="row">
+            <div class="large-6 columns center">
+              <label>Username
+                <input type="text" name="username" id="username" placeholder="Enter username here..."/>
+              </label>
+            </div>
+          </div>
+          <div class="row">
+            <div class="large-6 columns center">
+              <label>Password
+                <input type="password" name="password" placeholder="Enter password here..." id="password"/ >
+              </label>
+            </div>
+          </div>
+          <br>
+          <div class="row">
+            <div class="large-6 columns center">
+              <input class="button small postfix" id="login_button" type="submit" name="submit" value="Login" onclick="display_spinner()">
+            </div>
+          </div>        
+
+        </form>
       </div>
-      <form id="login_form" method="POST">
-        <div class="row">
-          <div class="large-6 columns center">
-            <label>Username
-              <input type="text" name="username" id="username" placeholder="Enter username here..."/>
-            </label>
-          </div>
-        </div>
-        <div class="row">
-          <div class="large-6 columns center">
-            <label>Password
-              <input type="password" name="password" placeholder="Enter password here..." id="password"/ >
-            </label>
-          </div>
-        </div>
-        <br>
-        <div class="row">
-          <div class="large-6 columns center">
-          <a class="button small postfix" id="login_button" onclick="validate_credentials(document.getElementById('username').value, document.getElementById('password').value)">
-          Login</a>
-        </div>
-        </div>        
-  
-      </form>
+    </div>
+    <div id="loader"></div>
   </div>
-</div>
-      </div>
   
 </body>
 </html>

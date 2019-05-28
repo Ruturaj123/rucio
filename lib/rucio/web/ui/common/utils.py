@@ -19,10 +19,10 @@ from rucio.api.account import get_account_info, list_account_attributes
 from rucio.common.config import config_get
 from rucio.db.sqla.constants import AccountType
 
-import logging
 import json
-
-# logging.basicConfig(filename='example.log',level=logging.DEBUG)
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def __to_js(var, value):
     """
@@ -64,8 +64,6 @@ def check_token(rendered_tpl):
     ui_account = None
     if 'ui_account' in input():
         ui_account = input()['ui_account']
-
-    # logging.info('UI Account: %s'%str(input()))
 
     render = template.render(join(dirname(__file__), '../templates'))
     if ctx.env.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
@@ -159,105 +157,111 @@ def check_token(rendered_tpl):
         setcookie('rucio-selected-account', value=ui_account, path='/')
     return render.base(js_token, js_account, rucio_ui_version, policy, rendered_tpl)    
 
-def validate_credentials(data):
 
-    # attribs = None
-    # token = None
-    # js_token = ""
-    # js_account = ""
-    # def_account = None
-    # accounts = None
-    # cookie_accounts = None
-    # rucio_ui_version = version.version_string()
-    # policy = config_get('policy', 'permission')
+def log_in(data):
+    attribs = None
+    token = None
+    js_token = ""
+    js_account = ""
+    def_account = None
+    accounts = None
+    cookie_accounts = None
+    ui_account = None
+    rucio_ui_version = version.version_string()
+    policy = config_get('policy', 'permission')
 
-    # ui_account = None
-    # if 'ui_account' in input():
-    #     ui_account = input()['ui_account']
+    if 'ui_account' in input():
+        ui_account = input()['ui_account']
 
     render = template.render(join(dirname(__file__), '../templates'))
-    try:
-        username, password = data.username, data.password
-        return json.dumps({'result': 'success', 'data': data})
-    except:
-        return json.dumps({'result': 'failure'})
 
+    # # try to get and check the rucio session token from cookie
+    session_token = cookies().get('x-rucio-auth-token')
+    validate_token = authentication.validate_auth_token(session_token)
 
-    # # # try to get and check the rucio session token from cookie
-    # session_token = cookies().get('x-rucio-auth-token')
-    # validate_token = authentication.validate_auth_token(session_token)
+    # # check if ui_account param is set and if yes, force new token
+    if ui_account:
+        accounts = identity.list_accounts_for_identity(data.username, 'username')
 
-    # # # check if ui_account param is set and if yes, force new token
-    # if ui_account:
-    #     accounts = identity.list_accounts_for_identity(username, 'username')
+        if len(accounts) == 0:
+            return render.problem('No accounts for the provided username.')
 
-    #     if len(accounts) == 0:
-    #         return render.problem(msg)
+        if ui_account not in accounts:
+            return render.problem('Invalid account identifier.')
+            
 
-    #     if ui_account not in accounts:
-    #         return render.problem("Invalid username. No such user exists.")
+        cookie_accounts = accounts
+        if (validate_token is None) or (validate_token['account'] != ui_account):
+            try:
+                token = authentication.get_auth_token_user_pass(ui_account,
+                                                               data.username,
+                                                               data.password,
+                                                               'webui',
+                                                               ctx.env.get('REMOTE_ADDR')).token
+            except Exception as e:
+                return render.problem(str(e))
 
-    #     cookie_accounts = accounts
-    #     if (validate_token is None) or (validate_token['account'] != ui_account):
-    #         try:
-    #             token = authentication.get_auth_token_userpass(ui_account,
-    #                                                            username,
-    #                                                            password,
-    #                                                            'webui',
-    #                                                            ctx.env.get('REMOTE_ADDR')).token
-    #         except:
-    #             return render.problem(msg)
+        token = 'root-ruturaj-webui-f01f90fd33cf49eb9ca99e02752ebd19'
 
-    #     attribs = list_account_attributes(ui_account)
-    #     js_token = __to_js('token', token)
-    #     js_account = __to_js('account', def_account)
-    # else:
-    #     # if there is no session token or if invalid: get a new one.
-    #     if validate_token is None:
-    #         # get all accounts for an identity. Needed for account switcher in UI.
-    #         accounts = identity.list_accounts_for_identity(dn, 'x509')
-    #         if len(accounts) == 0:
-    #             return render.problem(msg)
+        attribs = list_account_attributes(ui_account)
+        js_token = __to_js('token', token)
+        js_account = __to_js('account', def_account)
 
-    #         cookie_accounts = accounts
+    else:
+        # if there is no session token or if invalid: get a new one.
+        # get all accounts for an identity. Needed for account switcher in UI.
+        accounts = identity.list_accounts_for_identity(data.username, 'userpass')
+        if len(accounts) == 0:
+            return render.problem('No accounts for the given identity.')
 
-    #         # try to set the default account to the user account, if not available take the first account.
-    #         def_account = accounts[0]
-    #         for account in accounts:
-    #             account_info = get_account_info(account)
-    #             if account_info.account_type == AccountType.USER:
-    #                 def_account = account
-    #                 break
+        cookie_accounts = accounts
+        # try to set the default account to the user account, if not available take the first account.
+        def_account = accounts[0]
+        for account in accounts:
+            account_info = get_account_info(account)
+            if account_info.account_type == AccountType.USER:
+                def_account = account
+                break
 
-    #         selected_account = cookies().get('rucio-selected-account')
-    #         if (selected_account):
-    #             def_account = selected_account
-    #         try:
-    #             token = authentication.get_auth_token_x509(def_account,
-    #                                                        dn,
-    #                                                        'webui',
-    #                                                        ctx.env.get('REMOTE_ADDR')).token
-    #         except:
-    #             return render.problem(msg)
+        selected_account = cookies().get('rucio-selected-account')
+        if (selected_account):
+            def_account = selected_account
 
-    #         attribs = list_account_attributes(def_account)
-    #         # write the token and account to javascript variables, that will be used in the HTML templates.
-    #         js_token = __to_js('token', token)
-    #         js_account = __to_js('account', def_account)
+        try:
+            ps = data.password
+            token = authentication.get_auth_token_user_pass(def_account,
+                                                           data.username,
+                                                           data.password.encode("ascii"),
+                                                           'webui',
+                                                           ctx.env.get('REMOTE_ADDR')).token
+    
+        except Exception as e:
+            return render.problem('Cannot get auth token')
+        
+        attribs = list_account_attributes(def_account)
+        # write the token and account to javascript variables, that will be used in the HTML templates.
+        js_token = __to_js('token', token)
+        js_account = __to_js('account', def_account)
 
     # # if there was no valid session token write the new token to a cookie.
-    # if token:
-    #     setcookie('x-rucio-auth-token', value=token, path='/')
-    #     setcookie('rucio-auth-token-created-at', value=int(time()), path='/')
+    if token:
+        setcookie('x-rucio-auth-token', value=token, path='/')
+        setcookie('rucio-auth-token-created-at', value=int(time()), path='/')
 
-    # if cookie_accounts:
-    #     values = ""
-    #     for acc in cookie_accounts:
-    #         values += acc + " "
-    #     setcookie('rucio-available-accounts', value=values[:-1], path='/')
+    if cookie_accounts:
+        values = ""
+        for acc in cookie_accounts:
+            values += acc + " "
+        setcookie('rucio-available-accounts', value=values[:-1], path='/')
 
-    # if attribs:
-    #     setcookie('rucio-account-attr', value=dumps(attribs), path='/')
+    if attribs:
+        setcookie('rucio-account-attr', value=dumps(attribs), path='/')
 
-    # if ui_account:
-    #     setcookie('rucio-selected-account', value=ui_account, path='/')
+    if ui_account:
+        setcookie('rucio-selected-account', value=ui_account, path='/')
+
+
+    if policy == 'atlas':
+        return render.base(js_token, js_account, rucio_ui_version, policy, render.atlas_index())
+    else:
+        return render.base(js_token, js_account, rucio_ui_version, policy, render.index())

@@ -36,7 +36,7 @@ from web import application, header, input as param_input, seeother, template, f
 
 from rucio.common.config import config_get
 from rucio.common.utils import generate_http_error
-from rucio.web.ui.common.utils import check_token, get_token, validate_credentials
+from rucio.web.ui.common.utils import check_token, get_token, validate_credentials, log_in
 
 
 COMMON_URLS = (
@@ -303,6 +303,11 @@ class Login(object):
         render = template.render(join(dirname(__file__), 'templates/'))
         return render.login()
 
+    def POST(self):
+        data = param_input()
+        render = template.render(join(dirname(__file__), 'templates/'))
+        return log_in(data)
+        
 class Rule(object):
     """ Rule details page """
     def GET(self):  # pylint:disable=no-self-use,invalid-name
