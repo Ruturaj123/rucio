@@ -7,6 +7,7 @@
 #
 # Authors:
 # - Thomas Beermann, <thomas.beermann@cern.ch>, 2014-2018
+# - Ruturaj Gujar, <ruturaj.gujar23@gmail.com>, 2019
 
 from json import dumps
 from os.path import dirname, join
@@ -20,9 +21,6 @@ from rucio.common.config import config_get
 from rucio.db.sqla.constants import AccountType
 
 import json
-import logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
 
 def __to_js(var, value):
     """
@@ -158,7 +156,7 @@ def check_token(rendered_tpl):
     return render.base(js_token, js_account, rucio_ui_version, policy, rendered_tpl)    
 
 
-def log_in(data):
+def log_in(data, rendered_tpl):
     attribs = None
     token = None
     js_token = ""
@@ -170,46 +168,33 @@ def log_in(data):
     rucio_ui_version = version.version_string()
     policy = config_get('policy', 'permission')
 
-    if 'ui_account' in input():
-        ui_account = input()['ui_account']
-
     render = template.render(join(dirname(__file__), '../templates'))
 
     # # try to get and check the rucio session token from cookie
     session_token = cookies().get('x-rucio-auth-token')
     validate_token = authentication.validate_auth_token(session_token)
 
-    # # check if ui_account param is set and if yes, force new token
-    if ui_account:
-        accounts = identity.list_accounts_for_identity(data.username, 'username')
+    # if token is valid, render the requested page.
+    if validate_token:
+        if not rendered_tpl:
+            if policy == 'atlas':
+                rendered_tpl = render.atlas_index()
+            else:
+                rendered_tpl = render.index()
 
-        if len(accounts) == 0:
-            return render.problem('No accounts for the provided username.')
-
-        if ui_account not in accounts:
-            return render.problem('Invalid account identifier.')
-            
-
-        cookie_accounts = accounts
-        if (validate_token is None) or (validate_token['account'] != ui_account):
-            try:
-                token = authentication.get_auth_token_user_pass(ui_account,
-                                                               data.username,
-                                                               data.password,
-                                                               'webui',
-                                                               ctx.env.get('REMOTE_ADDR')).token
-            except Exception as e:
-                return render.problem(str(e))
-
-        token = 'root-ruturaj-webui-f01f90fd33cf49eb9ca99e02752ebd19'
-
-        attribs = list_account_attributes(ui_account)
+        token = session_token
         js_token = __to_js('token', token)
         js_account = __to_js('account', def_account)
+        
+        return render.base(js_token, js_account, rucio_ui_version, policy, rendered_tpl)
 
     else:
         # if there is no session token or if invalid: get a new one.
-        # get all accounts for an identity. Needed for account switcher in UI.
+        # if user tries to access a page through URL without logging in, then redirect to login page.
+        if rendered_tpl:
+            return render.login()
+        
+        # get all accounts for an identity. Needed for account switcher in UI.            
         accounts = identity.list_accounts_for_identity(data.username, 'userpass')
         if len(accounts) == 0:
             return render.problem('No accounts for the given identity.')
@@ -228,7 +213,6 @@ def log_in(data):
             def_account = selected_account
 
         try:
-            ps = data.password
             token = authentication.get_auth_token_user_pass(def_account,
                                                            data.username,
                                                            data.password.encode("ascii"),
@@ -242,6 +226,11 @@ def log_in(data):
         # write the token and account to javascript variables, that will be used in the HTML templates.
         js_token = __to_js('token', token)
         js_account = __to_js('account', def_account)
+
+        if policy == 'atlas':
+            rendered_tpl = render.atlas_index()
+        else:
+            rendered_tpl = render.index()
 
     # # if there was no valid session token write the new token to a cookie.
     if token:
@@ -260,8 +249,4 @@ def log_in(data):
     if ui_account:
         setcookie('rucio-selected-account', value=ui_account, path='/')
 
-
-    if policy == 'atlas':
-        return render.base(js_token, js_account, rucio_ui_version, policy, render.atlas_index())
-    else:
-        return render.base(js_token, js_account, rucio_ui_version, policy, render.index())
+    return render.base(js_token, js_account, rucio_ui_version, policy, rendered_tpl)

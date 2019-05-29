@@ -36,7 +36,7 @@ from web import application, header, input as param_input, seeother, template, f
 
 from rucio.common.config import config_get
 from rucio.common.utils import generate_http_error
-from rucio.web.ui.common.utils import check_token, get_token, validate_credentials, log_in
+from rucio.web.ui.common.utils import check_token, get_token, log_in
 
 
 COMMON_URLS = (
@@ -160,7 +160,8 @@ class AtlasIndex(object):
     def GET(self):  # pylint:disable=no-self-use,invalid-name
         """ GET """
         render = template.render(join(dirname(__file__), 'templates/'))
-        return check_token(render.atlas_index())
+        # return check_token(render.atlas_index())
+        return log_in(None, render.atlas_index())
 
 
 class Auth(object):
@@ -306,7 +307,7 @@ class Login(object):
     def POST(self):
         data = param_input()
         render = template.render(join(dirname(__file__), 'templates/'))
-        return log_in(data)
+        return log_in(data, None)
         
 class Rule(object):
     """ Rule details page """
@@ -433,11 +434,6 @@ class SubscriptionsEditor():
         """ GET """
         render = template.render(join(dirname(__file__), 'templates/'))
         return check_token(render.subscriptions_editor())
-
-class ValidateCredentials():
-    def POST(self):
-        data = param_input()
-        return validate_credentials(data)
 
 class LoadLogfile():
     """ Loads logfile content list """
